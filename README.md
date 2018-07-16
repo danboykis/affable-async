@@ -1,5 +1,7 @@
 # affable-async
 
+```[com.danboykis/affable-async "0.1.0-SNAPSHOT"]```
+
 Provide functionality useful for working with core.async.
 
 `u-pipeline-async` unordered pipeline that can execute n concurrent requests subject to 'af' asynchronous function
