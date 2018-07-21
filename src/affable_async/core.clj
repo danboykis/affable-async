@@ -21,10 +21,36 @@
   (assert (pos-int? n))
   (dotimes [_ n]
     (a/go-loop [p (a/chan 1)]
-               (if-some [e (a/<! from)]
-                 (do (af e p)
-                     (when-some [af-result (a/<! p)]
-                       (if (a/>! to af-result)
-                         (recur (a/chan 1))
-                         (a/close! from))))
-                 (when close? (a/close! to))))))
+      (if-some [e (a/<! from)]
+        (do (af e p)
+            (when-some [af-result (a/<! p)]
+              (if (a/>! to af-result)
+                (recur (a/chan 1))
+                (a/close! from))))
+        (when close? (a/close! to))))))
+
+(defn u-reduce [f init channels & {:keys [close?] :or {close? true}}]
+  "Takes a collection of channels and reduces them according to function f.
+  Returns a channel that has the result of the reduction. Each channel in
+  channels collection will have at most one value taken from it. A closed
+  channel will be discarded and skipped. If 'closed?' is true the channel
+  taken from will be closed. If channels is an empty or nil the 'init' value
+  will be returned.
+
+  'f': two argument function taking an accumulator and current value
+  'init': initial accumulator value
+  'channels': collection of core.async channels with at most one message in them
+  'close?': optional boolean argument that is true by default"
+
+  (a/go-loop [ret init channels channels]
+    (if (empty? channels)
+      ret
+      (let [[v ch] (a/alts! channels)
+            channels' (remove #(identical? ch %) channels)]
+        (when close? (a/close! ch))
+        (if (nil? v)
+          (recur ret channels')
+          (let [ret' (f ret v)]
+            (if (reduced? ret')
+              @ret'
+              (recur ret' channels'))))))))
