@@ -1,5 +1,6 @@
 (ns affable-async.core
-  (:require [clojure.core.async :as a]))
+  (:require [clojure.core.async :as a])
+  (:import [java.util.concurrent.atomic AtomicIntegerArray AtomicInteger]))
 
 (defn u-pipeline-async [{:keys [n to af from close?] :or {close? true}}]
   "Unordered Pipeline for async operations.
@@ -21,15 +22,20 @@
   (assert (pos-int? n))
   (assert (some? to))
   (assert (some? from))
-  (dotimes [_ n]
-    (a/go-loop [p (a/chan 1)]
-      (if-some [e (a/<! from)]
-        (do (af e p)
-            (when-some [af-result (a/<! p)]
-              (if (a/>! to af-result)
-                (recur (a/chan 1))
-                (a/close! from))))
-        (when close? (a/close! to))))))
+  (let [done (AtomicInteger. 0)]
+    (dotimes [_ n]
+      (a/take!
+        (a/go-loop [p (a/chan 1)]
+          (if-some [e (a/<! from)]
+            (do (af e p)
+                (when-some [af-result (a/<! p)]
+                  (if (a/>! to af-result)
+                    (recur (a/chan 1))
+                    (a/close! from))))
+            (.incrementAndGet done)))
+        (fn [_]
+          (when (and (= (.get done) n) close?)
+            (a/close! to)))))))
 
 (defn u-reduce [f init channels & {:keys [close?] :or {close? true}}]
   "Takes a collection of channels and reduces them according to function f.
