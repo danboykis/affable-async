@@ -34,7 +34,7 @@
                     (a/close! from))))
             (.incrementAndGet done)))
         (fn [_]
-          (when (and (= (.get done) n) close?)
+          (when (and close? (= (.get done) n))
             (a/close! to)))))))
 
 (defn u-reduce [f init channels & {:keys [close?] :or {close? true}}]
