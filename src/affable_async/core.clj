@@ -1,6 +1,6 @@
 (ns affable-async.core
   (:require [clojure.core.async :as a])
-  (:import [java.util.concurrent.atomic AtomicIntegerArray AtomicInteger]))
+  (:import [java.util.concurrent.atomic AtomicInteger]))
 
 (defn u-pipeline-async [{:keys [n to af from close?] :or {close? true}}]
   "Unordered Pipeline for async operations.
@@ -29,9 +29,8 @@
           (if-some [e (a/<! from)]
             (do (af e p)
                 (when-some [af-result (a/<! p)]
-                  (if (a/>! to af-result)
-                    (recur (a/chan 1))
-                    (a/close! from))))
+                  (when (a/>! to af-result)
+                    (recur (a/chan 1)))))
             (.incrementAndGet done)))
         (fn [_]
           (when (and close? (= (.get done) n))
@@ -54,7 +53,7 @@
     (if (empty? channels)
       ret
       (let [[v ch] (a/alts! channels)
-            channels' (remove #(identical? ch %) channels)]
+            channels' (remove (partial identical? ch) channels)]
         (when close? (a/close! ch))
         (if (nil? v)
           (recur ret channels')
