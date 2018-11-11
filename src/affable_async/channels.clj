@@ -4,7 +4,7 @@
 
 
 ;; like ManyToManyChannel but a lot less useful
-(deftype DummyChannel [closed]
+(deftype NilChannel [closed xf]
   ic/MMC
   (cleanup [_] nil)
   (abort [_] nil)
@@ -12,11 +12,19 @@
   (close! [_] (reset! closed true) nil)
   (closed? [_] @closed)
   p/ReadPort
-  (take! [ _ _] nil)
+  (take! [_ _] nil)
   p/WritePort
-  (put! [_ _ _] (atom (not @closed))))
+  (put! [_ val _]
+    (when (some? xf)
+      (locking xf
+        ((xf (fn [& _])) nil val)))
+      (atom (not @closed)))
+  java.lang.Object
+  (toString [_] (str "NilChannel<<" "closed:" @closed ">>")))
 
 
-(defn dummy-chan []
-  "Creates a channel that accepts writes but doesn't store messages."
-  (DummyChannel. (atom false)))
+(defn nil-chan
+  ([]
+   (nil-chan nil))
+  ([xf]
+   (NilChannel. (atom false) xf)))
