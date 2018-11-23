@@ -51,3 +51,22 @@
    (NilChannel. (atom false) xf nil))
   ([xf exh]
    (NilChannel. (atom false) xf exh)))
+
+(deftype ConstantChannel [closed v]
+  ic/MMC
+  (cleanup [_] nil)
+  (abort [_] nil)
+  p/Channel
+  (close! [_] (reset! closed true) nil)
+  (closed? [_] @closed)
+  p/ReadPort
+  (take! [_ _] (when-not @closed (atom v)))
+  p/WritePort
+  (put! [_ _ _]
+    (atom (not @closed)))
+  java.lang.Object
+  (toString [_] (str "ConstantChannel<<" "closed:" @closed ">>")))
+
+(defn constant-chan [value]
+  {:pre [(some? value)]}
+  (ConstantChannel. (atom false) value))
