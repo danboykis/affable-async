@@ -28,9 +28,10 @@
         (a/go-loop [p (a/chan 1)]
           (if-some [e (a/<! from)]
             (do (af e p)
-                (when-some [af-result (a/<! p)]
+                (if-some [af-result (a/<! p)]
                   (when (a/>! to af-result)
-                    (recur (a/chan 1)))))
+                    (recur (a/chan 1)))
+                  (recur (a/chan 1))))
             (.incrementAndGet done)))
         (fn [_]
           (when (and close? (= (.get done) n))
