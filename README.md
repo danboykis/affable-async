@@ -1,6 +1,6 @@
 # affable-async
 
-```[com.danboykis/affable-async "0.1.0-SNAPSHOT"]```
+```[com.danboykis/affable-async "0.1.0"]```
 
 Provide functionality useful for working with core.async.
 
