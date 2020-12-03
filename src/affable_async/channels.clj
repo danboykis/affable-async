@@ -26,7 +26,6 @@
               (when-some [result (handle exh t)]
                 (vreset! retry (assoc m :val result))))))))))
 
-(def ^:private dummy-promise (doto (promise) (deliver nil)))
 ;; like ManyToManyChannel but a lot less useful
 (deftype NilChannel [closed xf exh]
   ic/MMC
@@ -36,7 +35,7 @@
   (close! [_] (reset! closed true) nil)
   (closed? [_] @closed)
   p/ReadPort
-  (take! [_ _] dummy-promise)
+  (take! [_ _] nil)
   p/WritePort
   (put! [_ val _]
     (put-handler! val xf exh)
