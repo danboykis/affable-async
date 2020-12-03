@@ -27,30 +27,32 @@
                 (vreset! retry (assoc m :val result))))))))))
 
 ;; like ManyToManyChannel but a lot less useful
-(deftype NilChannel [closed xf exh]
+(deftype NilChannel [dummy-promise xf exh]
   ic/MMC
   (cleanup [_] nil)
   (abort [_] nil)
   p/Channel
-  (close! [_] (reset! closed true) nil)
-  (closed? [_] @closed)
+  (close! [_] (deliver dummy-promise nil) nil)
+  (closed? [_] (realized? dummy-promise))
   p/ReadPort
-  (take! [_ _] nil)
+  (take! [_ fn-handler]
+    (when (p/blockable? fn-handler)
+      dummy-promise))
   p/WritePort
   (put! [_ val _]
     (put-handler! val xf exh)
-    (atom (not @closed)))
+    (doto (promise) (deliver (not (realized? dummy-promise)))))
   java.lang.Object
-  (toString [_] (str "NilChannel<<" "closed:" @closed ">>")))
+  (toString [_] (str "NilChannel<<" "closed:" (realized? dummy-promise) ">>")))
 
 
 (defn nil-chan
   ([]
    (nil-chan nil))
   ([xf]
-   (NilChannel. (atom false) xf nil))
+   (NilChannel. (promise) xf nil))
   ([xf exh]
-   (NilChannel. (atom false) xf exh)))
+   (NilChannel. (promise) xf exh)))
 
 (deftype ConstantChannel [closed v]
   ic/MMC
@@ -60,10 +62,10 @@
   (close! [_] (reset! closed true) nil)
   (closed? [_] @closed)
   p/ReadPort
-  (take! [_ _] (when-not @closed (atom v)))
+  (take! [_ _] (when-not @closed (doto (promise) (deliver v))))
   p/WritePort
   (put! [_ _ _]
-    (atom (not @closed)))
+    (doto (promise) (deliver (not @closed))))
   java.lang.Object
   (toString [_] (str "ConstantChannel<<" "closed:" @closed ">>")))
 
