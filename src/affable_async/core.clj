@@ -22,7 +22,8 @@
   (assert (pos-int? n))
   (assert (some? to))
   (assert (some? from))
-  (let [done (AtomicInteger. 0)]
+  (let [done (AtomicInteger. 0)
+        finished (promise)]
     (dotimes [_ n]
       (a/take!
         (a/go-loop [p (a/chan 1)]
@@ -34,8 +35,11 @@
                   (recur (a/chan 1))))
             (.incrementAndGet done)))
         (fn [_]
-          (when (and close? (= (.get done) n))
-            (a/close! to)))))))
+          (when (= n (.get done))
+            (when close?
+              (a/close! to))
+            (deliver finished ::done)))))
+    finished))
 
 (defn u-reduce [f init channels & {:keys [close?] :or {close? true}}]
   "Takes a collection of channels and reduces them according to function f.
